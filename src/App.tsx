@@ -125,7 +125,10 @@ function getAvatarColor(name:string) {
 }
 async function signInWithGoogle() {
   if (!supabase || !isSupabaseConfigured) { console.warn("⚠️ Supabase não configurado"); return; }
-  await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
+    if (error) { console.error("❌ Google login error:", error); alert("Erro ao conectar com Google: "+error.message); }
+  } catch (err:any) { console.error("❌ Google login exception:", err); alert("Erro inesperado: "+err.message); }
 }
 
 // ─── Carousel ──────────────────────────────────────────────────────────────────
@@ -695,21 +698,6 @@ export default function App() {
   // Handles Supabase OAuth redirect (Google login)
   useEffect(()=>{
     if (!supabase || !isSupabaseConfigured) return;
-    const params=new URLSearchParams(window.location.search);
-    const code=params.get("code");
-    if (code) {
-      supabase.auth.exchangeCodeForSession(code).then(({data:{session}})=>{
-        if (session?.user) {
-          const supa=session.user;
-          const name=supa.user_metadata?.full_name||supa.email?.split("@")[0]||"Usuário";
-          const email=supa.email||"";
-          const authUser:AuthUser={name,email,type:"user"};
-          saveAuth(authUser);setUser(authUser);setView("user-app");
-          window.history.replaceState({},document.title,window.location.pathname);
-        }
-      });
-      return;
-    }
     supabase.auth.getSession().then(({data:{session}})=>{
       if (session?.user) {
         const supa=session.user;
@@ -718,7 +706,7 @@ export default function App() {
         const authUser:AuthUser={name,email,type:"user"};
         saveAuth(authUser);setUser(authUser);setView("user-app");
       }
-    });
+    }).catch(e=>console.error("Supabase getSession error:",e));
     const {data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{
       if (event==="SIGNED_IN"&&session?.user) {
         const supa=session.user;

@@ -14,7 +14,7 @@ if (!url || !anonKey) {
 }
 
 export const supabase = isSupabaseConfigured ? createClient(url, anonKey, {
-  auth: { flowType: "pkce", detectSessionInUrl: true },
+  auth: { detectSessionInUrl: true },
 }) : null;
 
 if (supabase) console.log("✅ Supabase cliente criado com sucesso");
