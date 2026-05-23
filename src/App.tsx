@@ -695,15 +695,28 @@ export default function App() {
   // Handles Supabase OAuth redirect (Google login)
   useEffect(()=>{
     if (!supabase || !isSupabaseConfigured) return;
+    const params=new URLSearchParams(window.location.search);
+    const code=params.get("code");
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({data:{session}})=>{
+        if (session?.user) {
+          const supa=session.user;
+          const name=supa.user_metadata?.full_name||supa.email?.split("@")[0]||"Usuário";
+          const email=supa.email||"";
+          const authUser:AuthUser={name,email,type:"user"};
+          saveAuth(authUser);setUser(authUser);setView("user-app");
+          window.history.replaceState({},document.title,window.location.pathname);
+        }
+      });
+      return;
+    }
     supabase.auth.getSession().then(({data:{session}})=>{
       if (session?.user) {
         const supa=session.user;
         const name=supa.user_metadata?.full_name||supa.email?.split("@")[0]||"Usuário";
         const email=supa.email||"";
         const authUser:AuthUser={name,email,type:"user"};
-        saveAuth(authUser);
-        setUser(authUser);
-        setView("user-app");
+        saveAuth(authUser);setUser(authUser);setView("user-app");
       }
     });
     const {data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{
@@ -712,9 +725,7 @@ export default function App() {
         const name=supa.user_metadata?.full_name||supa.email?.split("@")[0]||"Usuário";
         const email=supa.email||"";
         const authUser:AuthUser={name,email,type:"user"};
-        saveAuth(authUser);
-        setUser(authUser);
-        setView("user-app");
+        saveAuth(authUser);setUser(authUser);setView("user-app");
       }
     });
     return ()=>{subscription.unsubscribe();};
