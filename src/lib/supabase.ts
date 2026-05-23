@@ -13,6 +13,8 @@ if (!url || !anonKey) {
   console.log("✅ Supabase: URL e chave encontradas, criando cliente...");
 }
 
-export const supabase = isSupabaseConfigured ? createClient(url, anonKey) : null;
+export const supabase = isSupabaseConfigured ? createClient(url, anonKey, {
+  auth: { flowType: "pkce", detectSessionInUrl: true },
+}) : null;
 
 if (supabase) console.log("✅ Supabase cliente criado com sucesso");
