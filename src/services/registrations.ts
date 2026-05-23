@@ -74,7 +74,13 @@ function writeLocal<T>(key: string, data: T[]) {
 export async function saveClient(input: ClientRegistration) {
   const record = { ...input, id: crypto.randomUUID(), created_at: new Date().toISOString() };
   if (supabase) {
-    try { await supabase.from("clients").insert(record); } catch (_) {}
+    try {
+      const { error } = await supabase.from("clients").insert(record);
+      if (error) console.error("❌ Supabase saveClient error:", error);
+      else console.log("✅ Supabase cliente salvo:", record.email);
+    } catch (err) { console.error("❌ Supabase saveClient exception:", err); }
+  } else {
+    console.warn("⚠️ Supabase não disponível — salvando apenas localStorage");
   }
   writeLocal(CLIENTS_KEY, [record, ...readLocal<ClientRegistration>(CLIENTS_KEY)]);
   return record;
@@ -94,7 +100,13 @@ export async function loadClients(): Promise<ClientRegistration[]> {
 export async function saveMerchant(input: MerchantRegistration) {
   const record = { ...input, id: crypto.randomUUID(), created_at: new Date().toISOString() };
   if (supabase) {
-    try { await supabase.from("merchants").insert(record); } catch (_) {}
+    try {
+      const { error } = await supabase.from("merchants").insert(record);
+      if (error) console.error("❌ Supabase saveMerchant error:", error);
+      else console.log("✅ Supabase lojista salvo:", record.business_name);
+    } catch (err) { console.error("❌ Supabase saveMerchant exception:", err); }
+  } else {
+    console.warn("⚠️ Supabase não disponível — salvando apenas localStorage");
   }
   writeLocal(MERCHANTS_KEY, [record, ...readLocal<MerchantRegistration>(MERCHANTS_KEY)]);
   return record;
@@ -105,7 +117,8 @@ export async function loadMerchants(): Promise<MerchantRegistration[]> {
     try {
       const { data, error } = await supabase.from("merchants").select("*").order("created_at", { ascending: false });
       if (!error && data && data.length > 0) return data as MerchantRegistration[];
-    } catch (_) {}
+      if (error) console.warn("⚠️ Supabase loadMerchants error:", error);
+    } catch (err) { console.warn("⚠️ Supabase loadMerchants exception:", err); }
   }
   return readLocal<MerchantRegistration>(MERCHANTS_KEY);
 }
@@ -124,7 +137,13 @@ export function loadAllMerchants(): FullMerchantRecord[] {
 export async function saveValidation(input: CouponValidation) {
   const record = { ...input, id: crypto.randomUUID(), validated_at: new Date().toISOString() };
   if (supabase) {
-    try { await supabase.from("validations").insert(record); } catch (_) {}
+    try {
+      const { error } = await supabase.from("validations").insert(record);
+      if (error) console.error("❌ Supabase saveValidation error:", error);
+      else console.log("✅ Supabase validação salva:", record.code);
+    } catch (err) { console.error("❌ Supabase saveValidation exception:", err); }
+  } else {
+    console.warn("⚠️ Supabase não disponível — salvando apenas localStorage");
   }
   writeLocal(VALIDATIONS_KEY, [record, ...readLocal<CouponValidation>(VALIDATIONS_KEY)]);
   return record;
@@ -135,7 +154,8 @@ export async function loadValidations(): Promise<CouponValidation[]> {
     try {
       const { data, error } = await supabase.from("validations").select("*").order("validated_at", { ascending: false });
       if (!error && data && data.length > 0) return data as CouponValidation[];
-    } catch (_) {}
+      if (error) console.warn("⚠️ Supabase loadValidations error:", error);
+    } catch (err) { console.warn("⚠️ Supabase loadValidations exception:", err); }
   }
   return readLocal<CouponValidation>(VALIDATIONS_KEY);
 }

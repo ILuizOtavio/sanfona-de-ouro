@@ -37,6 +37,7 @@ import {
 } from "./storage/webProgress";
 import { PackOpeningScreen } from "./components/PackOpeningScreen";
 import { createPortal } from "react-dom";
+import { supabase, isSupabaseConfigured } from "./lib/supabase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type AppView =
@@ -121,6 +122,10 @@ function toggleFavorite(id:string) {
 function getAvatarColor(name:string) {
   const colors=["#F8C23A","#E85D2A","#287A45","#B63822","#7A2E17","#49A7A1"];
   return colors[(name.charCodeAt(0)||0)%colors.length];
+}
+async function signInWithGoogle() {
+  if (!supabase || !isSupabaseConfigured) { console.warn("⚠️ Supabase não configurado"); return; }
+  await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
 }
 
 // ─── Carousel ──────────────────────────────────────────────────────────────────
@@ -244,14 +249,20 @@ function Landing({sv}:{sv:(v:AppView)=>void}) {
 function LoginScreen({sv,onLogin}:{sv:(v:AppView)=>void;onLogin:(u:AuthUser)=>void}) {
   const [email,setEmail]=useState("");const [pass,setPass]=useState("");const [err,setErr]=useState("");
   function submit(e:React.FormEvent){e.preventDefault();setErr("");const users=readLS<FullUserRecord>(USERS_KEY);const found=users.find(u=>u.email===email&&u.password===pass);if(!found){setErr("Email ou senha inválidos.");return;}const user:AuthUser={name:found.name,email,type:"user"};saveAuth(user);onLogin(user);}
-  return (<FormCard back={()=>sv("landing")} title="Entrar" sub="Continue sua jornada cultural." iconBg="bg-milho/20" icon={Music}><AuthInput label="Email" type="email" value={email} onChange={setEmail} placeholder="seu@email.com"/><AuthInput label="Senha" type="password" value={pass} onChange={setPass} placeholder="••••••••"/><ErrBox msg={err}/><button type="button" onClick={submit} className="w-full rounded-2xl bg-milho py-3 font-black text-madeira hover:bg-ouro transition">Entrar</button><p className="text-center text-sm font-semibold text-palha/45">Sem conta? <button onClick={()=>sv("register")} className="font-black text-milho hover:text-ouro">Cadastre-se</button></p></FormCard>);
+  return (<FormCard back={()=>sv("landing")} title="Entrar" sub="Continue sua jornada cultural." iconBg="bg-milho/20" icon={Music}>
+    <button onClick={signInWithGoogle} className="w-full flex items-center justify-center gap-3 rounded-2xl border border-white/20 bg-white/10 py-3 font-black text-palha hover:bg-white/15 transition"><svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Entrar com Google</button>
+    <div className="flex items-center gap-3"><div className="flex-1 h-px bg-white/10"/><span className="text-xs font-semibold text-palha/30 uppercase">ou</span><div className="flex-1 h-px bg-white/10"/></div>
+    <AuthInput label="Email" type="email" value={email} onChange={setEmail} placeholder="seu@email.com"/><AuthInput label="Senha" type="password" value={pass} onChange={setPass} placeholder="••••••••"/><ErrBox msg={err}/><button type="button" onClick={submit} className="w-full rounded-2xl bg-milho py-3 font-black text-madeira hover:bg-ouro transition">Entrar</button><p className="text-center text-sm font-semibold text-palha/45">Sem conta? <button onClick={()=>sv("register")} className="font-black text-milho hover:text-ouro">Cadastre-se</button></p></FormCard>);
 }
 function RegisterScreen({sv,onLogin}:{sv:(v:AppView)=>void;onLogin:(u:AuthUser)=>void}) {
   const [f,setF]=useState({name:"",email:"",pass:"",confirm:"",phone:"",city:"Aracaju",audience:"Turista de experiência"});
   const [err,setErr]=useState("");const [ok,setOk]=useState(false);
   async function submit(e:React.FormEvent){e.preventDefault();setErr("");if(!f.name||!f.email||!f.pass){setErr("Preencha nome, email e senha.");return;}if(f.pass.length<6){setErr("Senha mínima: 6 caracteres.");return;}if(f.pass!==f.confirm){setErr("Senhas não coincidem.");return;}const users=readLS<FullUserRecord>(USERS_KEY);if(users.find(u=>u.email===f.email)){setErr("Email já cadastrado.");return;}const record:FullUserRecord={name:f.name,email:f.email,password:f.pass,phone:f.phone,city:f.city,audience:f.audience,created_at:new Date().toISOString()};localStorage.setItem(USERS_KEY,JSON.stringify([record,...users]));await saveClient({name:f.name,email:f.email,phone:f.phone,city:f.city,audience:f.audience});const user:AuthUser={name:f.name,email:f.email,type:"user"};saveAuth(user);setOk(true);setTimeout(()=>onLogin(user),900);}
   if(ok) return <OkScreen title="Bem-vindo ao Forró!" sub="Carregando sua jornada cultural..."/>;
-  return (<FormCard back={()=>sv("landing")} title="Criar conta" sub="Junte-se à gincana cultural." iconBg="bg-milho/20" icon={Users}><AuthInput label="Nome completo" value={f.name} onChange={v=>setF({...f,name:v})} placeholder="Seu nome"/><AuthInput label="Email" type="email" value={f.email} onChange={v=>setF({...f,email:v})} placeholder="seu@email.com"/><div className="grid grid-cols-2 gap-3"><AuthInput label="Senha" type="password" value={f.pass} onChange={v=>setF({...f,pass:v})} placeholder="••••••••"/><AuthInput label="Confirmar" type="password" value={f.confirm} onChange={v=>setF({...f,confirm:v})} placeholder="••••••••"/></div><AuthInput label="WhatsApp" value={f.phone} onChange={v=>setF({...f,phone:v})} placeholder="(79) 99999-9999"/><label className="block"><span className="text-[11px] font-black uppercase tracking-widest text-palha/40">Perfil</span><select value={f.audience} onChange={e=>setF({...f,audience:e.target.value})} className="mt-1.5 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-semibold text-palha outline-none"><option>Turista de experiência</option><option>Jovem aracajuano</option><option>Família</option><option>Idoso</option></select></label><ErrBox msg={err}/><button type="button" onClick={submit} className="w-full rounded-2xl bg-milho py-3 font-black text-madeira hover:bg-ouro transition">Criar conta</button><p className="text-center text-sm font-semibold text-palha/45">Já tem conta? <button onClick={()=>sv("login")} className="font-black text-milho">Entrar</button></p></FormCard>);
+  return (<FormCard back={()=>sv("landing")} title="Criar conta" sub="Junte-se à gincana cultural." iconBg="bg-milho/20" icon={Users}>
+    <button onClick={signInWithGoogle} className="w-full flex items-center justify-center gap-3 rounded-2xl border border-white/20 bg-white/10 py-3 font-black text-palha hover:bg-white/15 transition"><svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Criar conta com Google</button>
+    <div className="flex items-center gap-3"><div className="flex-1 h-px bg-white/10"/><span className="text-xs font-semibold text-palha/30 uppercase">ou</span><div className="flex-1 h-px bg-white/10"/></div>
+    <AuthInput label="Nome completo" value={f.name} onChange={v=>setF({...f,name:v})} placeholder="Seu nome"/><AuthInput label="Email" type="email" value={f.email} onChange={v=>setF({...f,email:v})} placeholder="seu@email.com"/><div className="grid grid-cols-2 gap-3"><AuthInput label="Senha" type="password" value={f.pass} onChange={v=>setF({...f,pass:v})} placeholder="••••••••"/><AuthInput label="Confirmar" type="password" value={f.confirm} onChange={v=>setF({...f,confirm:v})} placeholder="••••••••"/></div><AuthInput label="WhatsApp" value={f.phone} onChange={v=>setF({...f,phone:v})} placeholder="(79) 99999-9999"/><label className="block"><span className="text-[11px] font-black uppercase tracking-widest text-palha/40">Perfil</span><select value={f.audience} onChange={e=>setF({...f,audience:e.target.value})} className="mt-1.5 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-semibold text-palha outline-none"><option>Turista de experiência</option><option>Jovem aracajuano</option><option>Família</option><option>Idoso</option></select></label><ErrBox msg={err}/><button type="button" onClick={submit} className="w-full rounded-2xl bg-milho py-3 font-black text-madeira hover:bg-ouro transition">Criar conta</button><p className="text-center text-sm font-semibold text-palha/45">Já tem conta? <button onClick={()=>sv("login")} className="font-black text-milho">Entrar</button></p></FormCard>);
 }
 function MerchantLogin({sv,onLogin}:{sv:(v:AppView)=>void;onLogin:(u:AuthUser)=>void}) {
   const [email,setEmail]=useState("");const [pass,setPass]=useState("");const [err,setErr]=useState("");
@@ -681,8 +692,35 @@ export default function App() {
   const [view,setView]=useState<AppView>("landing");
   const [user,setUser]=useState<AuthUser|null>(()=>loadAuth());
   useEffect(()=>{if(user){if(user.type==="admin")setView("admin-app");else if(user.type==="merchant")setView("merchant-app");else setView("user-app");}},[]);
+  // Handles Supabase OAuth redirect (Google login)
+  useEffect(()=>{
+    if (!supabase || !isSupabaseConfigured) return;
+    supabase.auth.getSession().then(({data:{session}})=>{
+      if (session?.user) {
+        const supa=session.user;
+        const name=supa.user_metadata?.full_name||supa.email?.split("@")[0]||"Usuário";
+        const email=supa.email||"";
+        const authUser:AuthUser={name,email,type:"user"};
+        saveAuth(authUser);
+        setUser(authUser);
+        setView("user-app");
+      }
+    });
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{
+      if (event==="SIGNED_IN"&&session?.user) {
+        const supa=session.user;
+        const name=supa.user_metadata?.full_name||supa.email?.split("@")[0]||"Usuário";
+        const email=supa.email||"";
+        const authUser:AuthUser={name,email,type:"user"};
+        saveAuth(authUser);
+        setUser(authUser);
+        setView("user-app");
+      }
+    });
+    return ()=>{subscription.unsubscribe();};
+  },[]);
   function onLogin(u:AuthUser){setUser(u);if(u.type==="admin")setView("admin-app");else if(u.type==="merchant")setView("merchant-app");else setView("user-app");}
-  function onLogout(){clearAuth();setUser(null);setView("landing");}
+  function onLogout(){clearAuth();setUser(null);setView("landing");supabase?.auth.signOut().catch(()=>{});}
   if(view==="landing")           return <Landing sv={setView}/>;
   if(view==="login")             return <LoginScreen sv={setView} onLogin={onLogin}/>;
   if(view==="register")          return <RegisterScreen sv={setView} onLogin={onLogin}/>;
